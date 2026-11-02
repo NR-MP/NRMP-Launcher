@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>NightRunnersLauncher</AssemblyName>
+    <RootNamespace>NightRunnersMP.Launcher</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <Product>Night-Runners MultiPlayer Launcher</Product>
+    <AssemblyTitle>Night-Runners MultiPlayer Launcher</AssemblyTitle>
+    <Description>Installs and updates the Night-Runners MultiPlayer mod</Description>
+    <Company>MILLIYEN</Company>
+    <Copyright>Copyright (c) 2026 MILLIYEN. NIGHT-RUNNERS is made by PlanetJem.</Copyright>
+    <Version>0.1.0-alpha</Version>
+    <FileVersion>0.1.0.0</FileVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <DebugType>none</DebugType>
+    <ApplicationIcon Condition="Exists('nrmp.ico')">nrmp.ico</ApplicationIcon>
+    <!-- .NET Framework ships with Windows, so the exe stays small and needs nothing installed. -->
+    <AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
+    <FrameworkPathOverride>$(WINDIR)\Microsoft.NET\Framework64\v4.0.30319</FrameworkPathOverride>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="logo.jpg" LogicalName="logo.jpg" />
+    <EmbeddedResource Include="splashes.txt" LogicalName="splashes.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+</Project>
