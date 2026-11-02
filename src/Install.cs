@@ -37,8 +37,8 @@ internal static class SelfInstall
             return false;
         }
 
-        var question = $"Install Night-Runners MultiPlayer to\n{Folder}\n\nThis copies the launcher there and adds a desktop and a Start menu shortcut. No admin rights needed.";
-        if (MessageBox.Show(question, "Night-Runners MultiPlayer", MessageBoxButtons.YesNo) != DialogResult.Yes)
+        var question = $"Install Night-Runners Multiplayer to\n{Folder}\n\nThis copies the launcher there and adds a desktop and a Start menu shortcut. No admin rights needed.";
+        if (MessageBox.Show(question, "Night-Runners Multiplayer", MessageBoxButtons.YesNo) != DialogResult.Yes)
             return true;
 
         Directory.CreateDirectory(Folder);
@@ -66,7 +66,7 @@ internal static class SelfInstall
         link.SetPath(Installed);
         link.SetWorkingDirectory(Folder);
         link.SetIconLocation(Installed, 0);
-        ((IPersistFile)link).Save(Path.Combine(folder, "Night-Runners MultiPlayer.lnk"), true);
+        ((IPersistFile)link).Save(Path.Combine(folder, "Night-Runners Multiplayer.lnk"), true);
     }
 
     [ComImport, Guid("00021401-0000-0000-C000-000000000046")]

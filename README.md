@@ -1,8 +1,8 @@
 <div align="center">
 
-# Night-Runners MultiPlayer Launcher
+# Night-Runners Multiplayer Launcher
 
-Installs and updates the Night-Runners MultiPlayer mod, that's it.
+Installs and updates the Night-Runners Multiplayer mod, that's it.
 
 <a href="https://discord.gg/ERk9SxD4Ec"><img src="https://img.shields.io/badge/Discord-Join%20for%20support-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join the Discord for support"></a>
 <a href="../../releases"><img src="https://img.shields.io/badge/Download-Releases-E0002B?style=for-the-badge&logo=github&logoColor=white" alt="Download from Releases"></a>
@@ -53,7 +53,7 @@ No join key, no signing key and no server code. The join key comes in with an in
 
 Stuck, found a bug, or need an invite code? Come say hi.
 
-<a href="https://discord.gg/ERk9SxD4Ec"><img src="https://img.shields.io/badge/Discord-NRMP%20%7C%20Night--Runners%20MultiPlayer-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="NRMP Discord"></a>
+<a href="https://discord.gg/ERk9SxD4Ec"><img src="https://img.shields.io/badge/Discord-NRMP%20%7C%20Night--Runners%20Multiplayer-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="NRMP Discord"></a>
 
 Bring your `BepInEx\LogOutput.log` if something broke, it saves a lot of guessing.
 

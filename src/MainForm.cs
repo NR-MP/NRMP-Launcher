@@ -71,7 +71,7 @@ internal sealed class MainForm : Form
 
     public MainForm()
     {
-        Text = "Night-Runners MultiPlayer";
+        Text = "Night-Runners Multiplayer";
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         ClientSize = new Size(_logo.Width, _logo.Height + 236);
         FormBorderStyle = FormBorderStyle.FixedSingle;

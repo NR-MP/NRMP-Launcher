@@ -19,7 +19,7 @@ internal static class Program
         }
         catch (Exception e)
         {
-            MessageBox.Show($"Could not install the launcher: {e.Message}", "Night-Runners MultiPlayer");
+            MessageBox.Show($"Could not install the launcher: {e.Message}", "Night-Runners Multiplayer");
             return 1;
         }
 

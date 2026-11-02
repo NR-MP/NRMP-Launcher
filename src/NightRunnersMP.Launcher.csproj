@@ -7,9 +7,9 @@
     <RootNamespace>NightRunnersMP.Launcher</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
-    <Product>Night-Runners MultiPlayer Launcher</Product>
-    <AssemblyTitle>Night-Runners MultiPlayer Launcher</AssemblyTitle>
-    <Description>Installs and updates the Night-Runners MultiPlayer mod</Description>
+    <Product>Night-Runners Multiplayer Launcher</Product>
+    <AssemblyTitle>Night-Runners Multiplayer Launcher</AssemblyTitle>
+    <Description>Installs and updates the Night-Runners Multiplayer mod</Description>
     <Company>MILLIYEN</Company>
     <Copyright>Copyright (c) 2026 MILLIYEN. NIGHT-RUNNERS is made by PlanetJem.</Copyright>
     <Version>0.1.0-alpha</Version>
