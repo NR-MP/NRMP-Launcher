@@ -12,6 +12,8 @@ Installs and updates the Night-Runners MultiPlayer mod, that's it.
 <img src="https://img.shields.io/badge/.NET%20Framework-4.8-512BD4?style=flat-square&logo=dotnet&logoColor=white" alt=".NET Framework 4.8">
 <img src="https://img.shields.io/badge/admin-not%20needed-2EA043?style=flat-square" alt="No admin needed">
 
+<img width="478" height="581" alt="image" src="https://github.com/user-attachments/assets/78267dc6-516f-4b9c-b5ca-ccce541be9a8" />
+
 </div>
 
 NIGHT-RUNNERS is made by PlanetJem, this is a fan project by MILLIYEN.
