@@ -33,7 +33,8 @@ internal static class SelfInstall
         var self = Application.ExecutablePath;
         if (string.Equals(Path.GetFullPath(self), Installed, StringComparison.OrdinalIgnoreCase))
         {
-            TryDelete(self + ".old");
+            foreach (var old in Directory.GetFiles(Folder, "*.old"))
+                TryDelete(old);
             return false;
         }
 
@@ -53,8 +54,12 @@ internal static class SelfInstall
     public static void Replace(byte[] newExe)
     {
         var self = Application.ExecutablePath;
-        TryDelete(self + ".old");
-        File.Move(self, self + ".old");
+        // an .old that's still held open (antivirus, a second launcher) can't go, so step around it, the next start cleans up
+        var old = self + ".old";
+        TryDelete(old);
+        if (File.Exists(old))
+            old = $"{self}.{DateTime.Now.Ticks}.old";
+        File.Move(self, old);
         File.WriteAllBytes(self, newExe);
         Process.Start(self);
         Environment.Exit(0);
@@ -124,42 +129,47 @@ internal static class GameFinder
         Process.GetProcessesByName(Path.GetFileNameWithoutExtension(Exe)).Length > 0;
 }
 
-// only touches [Server], rest of the settings stay theirs
+// an old BepInEx.cfg with UpdateInteropAssemblies = true makes bepinex rebuild the interop we ship, that fails on
+// this game and no plugin loads. only that one line gets set to false, everything else in the cfg stays theirs
+internal static class BepInExConfig
+{
+    private const string RelativePath = @"BepInEx\config\BepInEx.cfg";
+
+    public static void KeepShippedInterop(string gameDir)
+    {
+        var path = Path.Combine(gameDir, RelativePath);
+        if (!File.Exists(path))
+            return;
+        var text = File.ReadAllText(path);
+        var line = new Regex(@"^(UpdateInteropAssemblies *= *)true *?(\r?)$", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        if (line.IsMatch(text))
+            File.WriteAllText(path, line.Replace(text, m => $"{m.Groups[1].Value}false{m.Groups[2].Value}"));
+    }
+}
+
+// reads Host and JoinKey from the mod cfg, players fill those in themselves
 internal static class ModConfig
 {
     private const string RelativePath = @"BepInEx\config\com.nightrunners.multiplayer.cfg";
 
     private static string PathIn(string gameDir) => Path.Combine(gameDir, RelativePath);
 
-    public static string ReadKey(string gameDir)
+    public static string ReadKey(string gameDir) => Read(gameDir, "JoinKey");
+
+    // the default the mod writes counts as not set
+    public static string ReadHost(string gameDir)
+    {
+        var host = Read(gameDir, "Host");
+        return host == null || host == "127.0.0.1" ? null : host;
+    }
+
+    // first value after "Name =" at the start of a line, null if the file or the line isn't there
+    private static string Read(string gameDir, string name)
     {
         var path = PathIn(gameDir);
         if (!File.Exists(path))
             return null;
-        var match = Regex.Match(File.ReadAllText(path), @"^JoinKey *= *(\S+)", RegexOptions.Multiline);
+        var match = Regex.Match(File.ReadAllText(path), $@"^{name} *= *(\S+)", RegexOptions.Multiline);
         return match.Success ? match.Groups[1].Value : null;
-    }
-
-    public static void WriteKey(string gameDir, string key) => Set(gameDir, "JoinKey", key);
-
-    public static void Write(string gameDir, string host, int port)
-    {
-        Set(gameDir, "Host", host);
-        Set(gameDir, "Port", port.ToString());
-    }
-
-    private static void Set(string gameDir, string name, string value)
-    {
-        var path = PathIn(gameDir);
-        Directory.CreateDirectory(Path.GetDirectoryName(path));
-        var text = File.Exists(path) ? File.ReadAllText(path) : "";
-        var line = new Regex($@"^{name} *=.*?(\r?)$", RegexOptions.Multiline);
-        if (line.IsMatch(text))
-            text = line.Replace(text, m => $"{name} = {value}{m.Groups[1].Value}");
-        else if (Regex.IsMatch(text, @"^\[Server\]", RegexOptions.Multiline))
-            text = Regex.Replace(text, @"^\[Server\]\r?$", m => $"{m.Value.TrimEnd('\r')}\r\n{name} = {value}\r", RegexOptions.Multiline);
-        else
-            text += $"\r\n[Server]\r\n{name} = {value}\r\n";
-        File.WriteAllText(path, text);
     }
 }

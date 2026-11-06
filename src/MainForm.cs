@@ -25,8 +25,11 @@ internal sealed class MainForm : Form
     private const string WhatItDoes =
         "When the launcher Reads: It reads the game folder you picked, and its settings.\n" +
         "When the launcher Writes: Writes the mod files inside the game folder, Mod settings in " +
-        "%LOCALAPPDATA%\\NightRunnersMP, and its two shortcuts. Nothing else.\n\n" +
-        "When the launcher Connects to: It connects only to nrmp-eu-1.duckdns.org, which is 128.140.117.115 (NRMP main server and file server Located in germany), for updates and the server status. It sends a hash of your invite code to be able to download the mod and nothing about you or your PC.\n\n" +
+        "%LOCALAPPDATA%\\NightRunnersMP (with the date of the newest update it has seen, so nobody can hand it an older one), its own log launcher.log, the release zip while an update downloads (deleted right after), and its two shortcuts. Before installing it writes and deletes one empty test file in the game folder to see if Windows lets it. After an update it sets UpdateInteropAssemblies to false in BepInEx.cfg, so BepInEx doesn't try to rebuild the mod's files and break them. If you installed array's C1 map yourself and the release has array's 6 fix files, it swaps those in. Nothing else.\n\n" +
+        "SHARE LOGS: only when you press it, it reads BepInEx\\LogOutput.log, the two BepInEx settings files, the game's Player.log and its own log, " +
+        "takes out your invite code, the server address and your Windows user name, and zips them onto your Desktop. It sends nothing, you post the zip yourself.\n\n" +
+        "When the launcher Connects to: Updates come from the NRMP-MOD release on GitHub and its own updates from the NRMP-Launcher release, so github.com and GitHub's download servers (objects.githubusercontent.com and release-assets.githubusercontent.com). Anyone can download those, it sends nothing about you or your PC. " +
+        "For the player count it asks the server you put in BepInEx\\config\\com.nightrunners.multiplayer.cfg yourself, over plain http, with a hash of your invite code. No server in there, no player count. It never writes that file.\n\n" +
         "Updates: it checks on its own. Nothing downloads until you press Update, and every update has to match a signature built into this launcher maintained by me MILLIYEN.\n\n" +
         "To remove it, delete that folder and the shortcuts. The mod is the BepInEx folder, winhttp.dll and doorstop_config.ini in the game folder.";
     private const int StatusEveryMs = 30000;
@@ -51,7 +54,8 @@ internal sealed class MainForm : Form
     private readonly Label _server = Caption(9.5f, Muted);
     private readonly ProgressStrip _progress = new ProgressStrip();
     private readonly Button _play = PlayButton();
-    private readonly Button _discord = DiscordButton();
+    private readonly Button _discord = DarkButton("NRMP DISCORD");
+    private readonly Button _share = DarkButton("SHARE LOGS");
     private readonly Label _patreon = Link("Support PlanetJem on Patreon");
     private readonly Label _credits = Link("Credits");
     private readonly Label _change = Link("Change folder");
@@ -67,6 +71,8 @@ internal sealed class MainForm : Form
     private string _key;
     private bool _busy;
     private Manifest _update;
+    private Manifest _manifest;
+    private long _bytes;
     private Updater _updater;
 
     public MainForm()
@@ -86,7 +92,9 @@ internal sealed class MainForm : Form
         Place(_status, Gutter, top - 16, width, 48);
         Place(_progress, Gutter, top + 34, width, 2);
         Place(_play, Gutter, top + 42, width, 54);
-        Place(_discord, Gutter, top + 104, width, 34);
+        var discordWidth = width * 3 / 5;
+        Place(_discord, Gutter, top + 104, discordWidth, 34);
+        Place(_share, Gutter + discordWidth + 8, top + 104, width - discordWidth - 8, 34);
         Place(_server, Gutter + 16, top + 148, width - 16, 22);
         Place(_version, ClientSize.Width - Gutter - 130, top + 180, 130, 20);
         PlaceRow(top + 180, _patreon, _credits, _change, _about);
@@ -103,6 +111,8 @@ internal sealed class MainForm : Form
         _change.Click += async (_, _) => await PickFolder();
         _patreon.Click += (_, _) => Process.Start(PatreonUrl);
         _discord.Click += (_, _) => Process.Start(DiscordUrl);
+        _share.Click += async (_, _) => await ShareLogs();
+        _tips.SetToolTip(_share, "Zips your logs for the Discord, without your invite code or the server address");
         _credits.Click += (_, _) =>
         {
             using (var dialog = new CreditsDialog())
@@ -145,6 +155,7 @@ internal sealed class MainForm : Form
 
     private async Task Prepare()
     {
+        Diagnostics.Log($"launcher {Application.ProductVersion} started");
         _busy = true;
         try
         {
@@ -206,30 +217,23 @@ internal sealed class MainForm : Form
         _play.Enabled = false;
         await Guarded(async () =>
         {
-            Manifest manifest = null;
-            Updater updater = null;
-            while (manifest == null)
+            await StartServerChecks();
+            Say("Looking for updates");
+            var updater = new Updater(Updater.DefaultUrl, _game);
+            var manifest = await Task.Run(updater.FetchManifest);
+            if (manifest == null)
             {
-                if (_key == null && !AskForKey(null))
-                {
-                    Say("You need an invite code to install the Mod Files.");
-                    return;
-                }
-                Say("Looking for updates");
-                updater = new Updater(Updater.DefaultUrl, _key, _game);
-                manifest = await Task.Run(updater.FetchManifest);
-                if (manifest == null && !AskForKey("That invite code wasn't accepted."))
-                    return;
+                Say("There's no NRMP release for this game version yet.");
+                return;
             }
 
-            ModConfig.WriteKey(_game, _key);
-            ModConfig.Write(_game, manifest.Host, manifest.Port);
             _version.Text = $"Mod {manifest.Version}";
+            _manifest = manifest;
             _updater = updater;
-            await StartServerChecks(updater);
 
             var files = await Task.Run(() => updater.Outdated(manifest));
             var launcher = await Task.Run(() => LauncherOutdated(manifest));
+            Diagnostics.Log($"mod {manifest.Version}, {files.Count} files to get, launcher outdated {launcher}");
             if (files.Count == 0 && !launcher)
             {
                 Ready("Up to date. Have fun.");
@@ -244,6 +248,7 @@ internal sealed class MainForm : Form
         var word = ModInstalled ? "UPDATE" : "INSTALL";
         var size = Math.Max(1, bytes / (1024 * 1024));
         _update = manifest;
+        _bytes = bytes;
         _play.Text = word;
         _play.Enabled = true;
         Say(ModInstalled ? $"Update available, {size} MB. Press {word} to get it." : $"Ready to install, {size} MB. Press {word} to start.");
@@ -256,9 +261,12 @@ internal sealed class MainForm : Form
         _play.Enabled = false;
         await Guarded(async () =>
         {
-            if (!await Task.Run(() => updater.IsRightGame(manifest)) && !ConfirmOtherGame())
+            var problems = await Task.Run(() => Preflight.BeforeInstall(_game, _bytes));
+            if (!await Task.Run(() => updater.IsRightGame(manifest)))
+                problems.Add(Preflight.WrongGame);
+            if (!Preflight.Confirm(this, problems, "Install"))
             {
-                Say("This folder has a different game version.");
+                Say(problems.Any(p => p.Blocks) ? "Fix the problem above, then press " + _play.Text + " again." : "Not installed.");
                 _play.Enabled = true;
                 return;
             }
@@ -292,13 +300,9 @@ internal sealed class MainForm : Form
         {
             await work();
         }
-        catch (Exception e) when (e is WebException || e is IOException || e is UnauthorizedAccessException)
+        catch (Exception e) when (e is WebException || e is IOException || e is UnauthorizedAccessException || e is InvalidDataException)
         {
-            Offline(e.Message);
-        }
-        catch (InvalidDataException e)
-        {
-            Offline($"The update failed its safety check ({e.Message}) and was not installed.");
+            Offline(Diagnostics.Explain(e, _game));
         }
     }
 
@@ -317,23 +321,34 @@ internal sealed class MainForm : Form
     private static bool LauncherOutdated(Manifest manifest) =>
         Updater.HashFile(Application.ExecutablePath) != manifest.LauncherHash;
 
-    private async Task StartServerChecks(Updater updater)
+    private async Task StartServerChecks()
     {
-        _statusUpdater = updater;
         await RefreshServer();
         _statusTimer.Start();
     }
 
-    private Updater _statusUpdater;
-
+    // read every time, they might fill in the cfg while the launcher is open
     private async Task RefreshServer()
     {
+        var host = ModConfig.ReadHost(_game);
+        var key = ModConfig.ReadKey(_game);
+        if (host == null || key == null)
+        {
+            _serverColor = Muted;
+            _server.Text = "No server set yet, get it from the NRMP Discord";
+            _tips.SetToolTip(_server, @"Host, Port and JoinKey go in BepInEx\config\com.nightrunners.multiplayer.cfg");
+            Invalidate();
+            return;
+        }
+        _key = key;
+        _tips.SetToolTip(_server, null);
+
         ServerStatus status;
         try
         {
-            status = await Task.Run(_statusUpdater.FetchStatus);
+            status = await Task.Run(() => Updater.FetchStatus(host, key));
         }
-        catch (Exception e) when (e is WebException || e is IOException || e is FormatException)
+        catch (Exception e) when (e is WebException || e is IOException || e is FormatException || e is InvalidDataException || e is UriFormatException)
         {
             status = new ServerStatus();
         }
@@ -360,8 +375,112 @@ internal sealed class MainForm : Form
         {
             _busy = false;
         }
-        if (!installing && _update == null && _play.Enabled)
+        if (!installing && _update == null && _play.Enabled && await ReadyToPlay())
             StartGame();
+    }
+
+    // the game can update under the mod, or the folder can be one the loader can't start from
+    private async Task<bool> ReadyToPlay()
+    {
+        var manifest = _manifest;
+        var updater = _updater;
+        var sameGame = true;
+        try
+        {
+            sameGame = manifest == null || updater == null || await Task.Run(() => updater.IsRightGame(manifest));
+        }
+        catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+        {
+            Diagnostics.Log("couldn't hash GameAssembly.dll: " + e.Message);
+        }
+        var problems = Preflight.BeforePlay(_game, sameGame);
+        if (Preflight.Confirm(this, problems, "Play"))
+            return true;
+        Say("Not started.");
+        return false;
+    }
+
+    private async Task ShareLogs()
+    {
+        _share.Enabled = false;
+        try
+        {
+            var status = _status.Text;
+            var zip = await Task.Run(() => Diagnostics.PackLogs(_game, _key, () => Report(status)));
+            var summary = $"NRMP launcher {Application.ProductVersion}, mod {_manifest?.Version ?? "unknown"}, " +
+                $"game build matches: {await Task.Run(GameMatches)}. Last message: {status}";
+            Clipboard.SetText(Diagnostics.Redact(summary, new System.Collections.Generic.List<string> { _key ?? "" }));
+            Diagnostics.ShowInExplorer(zip);
+            if (MessageBox.Show(this,
+                    $"Your logs are in {Path.GetFileName(zip)} on your Desktop. Your invite code, the server address and your Windows user name are taken out, and nothing was sent anywhere.\n\n" +
+                    "Post the zip in the NRMP Discord and say what happened. A short summary is on your clipboard too.\n\nOpen the Discord now?",
+                    "Logs ready", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                Process.Start(DiscordUrl);
+        }
+        catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is ExternalException)
+        {
+            Diagnostics.Log("share logs failed: " + e);
+            MessageBox.Show(this, $"Couldn't pack the logs: {e.Message}", "Share logs", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            _share.Enabled = true;
+        }
+    }
+
+    private string GameMatches()
+    {
+        try
+        {
+            return _manifest == null || _updater == null ? "unknown" : _updater.IsRightGame(_manifest) ? "yes" : "NO";
+        }
+        catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+        {
+            return "couldn't read GameAssembly.dll";
+        }
+    }
+
+    // what we'd ask anyway in support, so nobody has to
+    private string Report(string status)
+    {
+        var lines = new System.Collections.Generic.List<string>
+        {
+            "Night-Runners Multiplayer launcher report",
+            $"Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss zzz}",
+            $"Launcher: {Application.ProductVersion}",
+            $"Windows: {Environment.OSVersion}, {(Environment.Is64BitOperatingSystem ? "64" : "32")} bit",
+            $"Game folder: {_game ?? "not picked"}",
+            $"Mod release: {_manifest?.Version ?? "unknown"}",
+            $"Mod installed: {(_game != null && ModInstalled ? "yes" : "no")}",
+            $"Game build matches the mod: {GameMatches()}",
+            $"Last message: {status}",
+        };
+        if (_game != null)
+        {
+            try
+            {
+                var drive = new DriveInfo(Path.GetPathRoot(Path.GetFullPath(_game)));
+                lines.Add($"Free space on {drive.Name}: {drive.AvailableFreeSpace >> 20} MB");
+            }
+            catch (Exception e) when (e is IOException || e is ArgumentException || e is UnauthorizedAccessException)
+            {
+            }
+            lines.AddRange(Preflight.BeforePlay(_game, true).Select(p => "Path check: " + p.Text.Replace("\n", " ")));
+        }
+        if (_manifest != null && _updater != null)
+        {
+            try
+            {
+                var off = _updater.Outdated(_manifest);
+                lines.Add(off.Count == 0 ? "Mod files: all match the release" : "Mod files missing or changed:");
+                lines.AddRange(off.Select(f => "  " + f.Path));
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is InvalidDataException)
+            {
+                lines.Add("Mod files: couldn't check, " + e.Message);
+            }
+        }
+        return string.Join("\r\n", lines) + "\r\n";
     }
 
     private void StartGame()
@@ -421,21 +540,6 @@ internal sealed class MainForm : Form
         return false;
     }
 
-    private bool AskForKey(string problem)
-    {
-        using (var dialog = new InviteDialog(problem))
-        {
-            if (dialog.ShowDialog(this) != DialogResult.OK || dialog.Code.Length == 0)
-                return false;
-            _key = dialog.Code;
-            return true;
-        }
-    }
-
-    private bool ConfirmOtherGame() => MessageBox.Show(this,
-        "This is a different build of the game than the mod was made for, and it will crash no doubt....\n\nInstall anyway?",
-        "Different game version", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes;
-
     private void Say(string text) => _status.Text = text;
 
     private void Ready(string text)
@@ -480,11 +584,11 @@ internal sealed class MainForm : Form
         return link;
     }
 
-    private static Button DiscordButton()
+    private static Button DarkButton(string text)
     {
         var button = new Button
         {
-            Text = "NRMP DISCORD",
+            Text = text,
             BackColor = Idle,
             ForeColor = Bright,
             FlatStyle = FlatStyle.Flat,
@@ -556,46 +660,6 @@ internal sealed class MainForm : Form
                 return;
             using (var fill = new SolidBrush(Accent))
                 e.Graphics.FillRectangle(fill, 0, 0, (int)(Width * Math.Min(_fraction, 1)), Height);
-        }
-    }
-
-    private sealed class InviteDialog : Form
-    {
-        private readonly TextBox _box = new TextBox();
-
-        public string Code => _box.Text.Trim();
-
-        public InviteDialog(string problem)
-        {
-            Text = "Invite code";
-            ClientSize = new Size(380, 130);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
-            StartPosition = FormStartPosition.CenterParent;
-            BackColor = Back;
-            ForeColor = Bright;
-
-            var prompt = new Label
-            {
-                Text = problem ?? "Paste the invite code from your host.",
-                Bounds = new Rectangle(14, 12, 352, 22),
-            };
-            _box.Bounds = new Rectangle(14, 42, 352, 26);
-            _box.BackColor = Idle;
-            _box.ForeColor = Bright;
-            _box.BorderStyle = BorderStyle.FixedSingle;
-            var ok = DialogButton("OK", DialogResult.OK, new Rectangle(204, 86, 78, 30));
-            var cancel = DialogButton("Cancel", DialogResult.Cancel, new Rectangle(288, 86, 78, 30));
-            Controls.AddRange(new Control[] { prompt, _box, ok, cancel });
-            AcceptButton = ok;
-            CancelButton = cancel;
-        }
-
-        protected override void OnHandleCreated(EventArgs e)
-        {
-            base.OnHandleCreated(e);
-            DarkTitleBar.Apply(this);
         }
     }
 

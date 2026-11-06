@@ -18,7 +18,7 @@ Installs and updates the Night-Runners Multiplayer mod, that's it.
 
 NIGHT-RUNNERS is made by PlanetJem, this is a fan project by MILLIYEN.
 
-It's one small exe. No admin rights, doesn't touch the registry from its own code, doesn't run at startup and doesn't install a service. On start it only checks if there's a new release. Nothing downloads until you press UPDATE or INSTALL, and every update has to match a release signed with my key.
+It's one small exe. No admin rights, doesn't touch the registry from its own code, doesn't run at startup and doesn't install a service. On start it only checks if there's a new release on [NR-MP/NRMP-MOD](https://github.com/NR-MP/NRMP-MOD/releases). Nothing downloads until you press UPDATE or INSTALL, and every update has to match a release signed with my key.
 
 Everything it reads, writes and connects to is in [docs/LAUNCHER.md](docs/LAUNCHER.md). Source is right here so go check.
 
@@ -32,8 +32,9 @@ The exe isn't code signed, so Windows SmartScreen or Defender can warn about it.
 
 1. Unzip and run `NightRunnersLauncher.exe`. If Windows warns you, click **More info**, then **Run anyway**.
 2. Pick your Night-Runners game folder.
-3. Paste your invite code when it asks. No code yet? Ask in the Discord.
-4. Press **INSTALL**, then **PLAY**.
+3. Press **INSTALL**. It puts BepInEx and the mod in the game folder.
+4. To play online, get the server from the NRMP Discord and put Host, Port and JoinKey in `BepInEx\config\com.nightrunners.multiplayer.cfg` yourself. The launcher never writes that file.
+5. Press **PLAY**.
 
 When there's a new release the launcher tells you. Press **UPDATE** and that's it.
 
@@ -49,15 +50,15 @@ The exe ends up in `src\bin\Release\net48`. With the same tools you should get t
 
 ## What's not in here
 
-No join key, no signing key and no server code. The join key comes in with an invite (FOR NOW!). 
+No join key, no server address, no signing key and no server code. You get the server from the Discord.
 
 ## Support
 
-Stuck, found a bug, or need an invite code? Come say hi.
+Stuck, found a bug, or need the server? Come say hi.
 
 <a href="https://discord.gg/ERk9SxD4Ec"><img src="https://img.shields.io/badge/Discord-NRMP%20%7C%20Night--Runners%20Multiplayer-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="NRMP Discord"></a>
 
-Bring your `BepInEx\LogOutput.log` if something broke, it saves a lot of guessing.
+If something broke, press **SHARE LOGS** in the launcher and bring the zip, it saves a lot of guessing. It strips your join key and server address.
 
 ## Credits
 
